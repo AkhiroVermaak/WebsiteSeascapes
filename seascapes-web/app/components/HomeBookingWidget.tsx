@@ -1,36 +1,15 @@
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, addDays } from "date-fns"; // Import addDays from date-fns
-import { CalendarIcon } from "lucide-react";
+import { addDays } from "date-fns";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { cn } from "@/lib/utils";
-
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import CusDatePicker from './CusDatePicker';
+import CusSelector from './CusSelector';
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
 
@@ -75,6 +54,10 @@ export function HomeBookingWidget() {
     },
   });
 
+  // States to manage focus hints
+  const [showCheckInHint, setShowCheckInHint] = useState(false);
+  const [showCheckOutHint, setShowCheckOutHint] = useState(false);
+
   const onSubmit = (data: any) => {
     console.log('Form Data:', data);
     toast({
@@ -90,32 +73,24 @@ export function HomeBookingWidget() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-4 bg-gray-50 p-4 justify-between items-center">
+        
         {/* Destination Select */}
         <FormField
           control={form.control}
           name="destination"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Destination</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a verified destination" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="pringle">Pringle Bay</SelectItem>
-                  <SelectItem value="betty">Betty's Bay</SelectItem>
-                  <SelectItem value="rooi">Rooi-Els</SelectItem>
-                  <SelectItem value="overburg">Overberg</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                You can explore the different areas in which we operate here:{" "}
-                <Link href="/about">About</Link>.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+            <CusSelector
+              label="Destination"
+              value={field.value}
+              onChange={field.onChange}
+              options={[
+                { value: "pringle", label: "Pringle Bay" },
+                { value: "betty", label: "Betty's Bay" },
+                { value: "rooi", label: "Rooi-Els" },
+                { value: "overburg", label: "Overberg" },
+              ]}
+              dataType="textState"
+            />
           )}
         />
 
@@ -124,30 +99,19 @@ export function HomeBookingWidget() {
           control={form.control}
           name="adults"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Adults</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange(Number(value))} // Convert string to number
-                defaultValue={String(field.value)} // Convert number to string for SelectItem
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Number of Adults" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="4">4</SelectItem>
-                  <SelectItem value="5">5</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Select the total number of adults attending the trip.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+            <CusSelector
+              label="Adults"
+              value={field.value}
+              onChange={field.onChange}
+              options={[
+                { value: 1, label: "1" },
+                { value: 2, label: "2" },
+                { value: 3, label: "3" },
+                { value: 4, label: "4" },
+                { value: 5, label: "5" },
+              ]}
+              dataType="numberState"
+            />
           )}
         />
 
@@ -156,42 +120,15 @@ export function HomeBookingWidget() {
           control={form.control}
           name="arrival"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Check-In</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Select check-in date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                Select your check-in date.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+            <CusDatePicker
+              label="Check-In"
+              selectedDate={field.value}
+              onSelect={field.onChange}
+              hint="Select your check-in date."
+              showHint={showCheckInHint}
+              onFocus={() => setShowCheckInHint(true)}
+              onBlur={() => setShowCheckInHint(false)}
+            />
           )}
         />
 
@@ -200,42 +137,16 @@ export function HomeBookingWidget() {
           control={form.control}
           name="departure"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Check-Out</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Select check-out date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date <= form.getValues("arrival")}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                Select your check-out date.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+            <CusDatePicker
+              label="Check-Out"
+              selectedDate={field.value}
+              onSelect={field.onChange}
+              hint="Select your check-out date."
+              showHint={showCheckOutHint}
+              onFocus={() => setShowCheckOutHint(true)}
+              onBlur={() => setShowCheckOutHint(false)}
+              disabledDates={(date) => date <= form.getValues("arrival")}
+            />
           )}
         />
 
