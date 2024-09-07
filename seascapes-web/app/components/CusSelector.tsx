@@ -18,10 +18,10 @@ const CusSelector: React.FC<CusSelectorProps<any>> = ({ label, value, onChange, 
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-mediump py-2 uppercase text-gray-700">{label}</label>
       <FormControl>
         <Select onValueChange={handleChange} defaultValue={String(value)}>
-          <SelectTrigger>
+          <SelectTrigger className='rounded-none'>
             <SelectValue placeholder={`Select ${label}`} />
           </SelectTrigger>
           <SelectContent>

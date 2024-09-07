@@ -3,15 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays } from "date-fns";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import CusDatePicker from './CusDatePicker';
 import CusSelector from './CusSelector';
-import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 // Define schema using zod
 const formSchema = z.object({
@@ -30,12 +30,14 @@ const formSchema = z.object({
     .number({
       required_error: "Please select the number of adults.",
     })
-    .min(1, "At least 1 adult is required."),
+    .min(1, "At least 1 adult is required.")
+    .max(7, "You can select a maximum of 7 adults."), // Add validation for max 7 adults
   children: z
     .number({
       required_error: "Please select the number of children.",
     })
-    .min(0, "Number of children cannot be negative."),
+    .min(0, "Number of children cannot be negative.")
+    .max(7, "The total number of guests (adults + children) cannot exceed 8."),
 });
 
 export function HomeBookingWidget() {
@@ -54,9 +56,8 @@ export function HomeBookingWidget() {
     },
   });
 
-  // States to manage focus hints
-  const [showCheckInHint, setShowCheckInHint] = useState(false);
-  const [showCheckOutHint, setShowCheckOutHint] = useState(false);
+  // Track number of adults to dynamically limit children selection
+  const [adults, setAdults] = useState<number>(1);
 
   const onSubmit = (data: any) => {
     console.log('Form Data:', data);
@@ -70,88 +71,139 @@ export function HomeBookingWidget() {
     });
   };
 
+  // Create dynamic options for children based on selected adults
+  const getChildrenOptions = (adults: number) => {
+    const maxChildren = 8 - adults;
+    const options = [];
+    for (let i = 0; i <= maxChildren; i++) {
+      options.push({ value: i, label: String(i) });
+    }
+    return options;
+  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-4 bg-gray-50 p-4 justify-between items-center">
-        
+    <div className="p-6 -mt-[50px]   bg-gray-100 border-gray-200 border-[1px]">
+<Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex gap-6 text-gray-600 bg-gray-100  items-end"
+      >
         {/* Destination Select */}
         <FormField
           control={form.control}
           name="destination"
           render={({ field }) => (
-            <CusSelector
-              label="Destination"
-              value={field.value}
-              onChange={field.onChange}
-              options={[
-                { value: "pringle", label: "Pringle Bay" },
-                { value: "betty", label: "Betty's Bay" },
-                { value: "rooi", label: "Rooi-Els" },
-                { value: "overburg", label: "Overberg" },
-              ]}
-              dataType="textState"
-            />
+            <div className="w-full">
+              <CusSelector
+                label="Destination"
+                value={field.value}
+                onChange={field.onChange}
+                options={[
+                  { value: "pringle", label: "Pringle Bay" },
+                  { value: "betty", label: "Betty's Bay" },
+                  { value: "rooi", label: "Rooi-Els" },
+                  { value: "overburg", label: "Overberg" },
+                ]}
+                dataType="textState"
+              />
+            </div>
           )}
         />
-
-        {/* Adults Select */}
-        <FormField
-          control={form.control}
-          name="adults"
-          render={({ field }) => (
-            <CusSelector
-              label="Adults"
-              value={field.value}
-              onChange={field.onChange}
-              options={[
-                { value: 1, label: "1" },
-                { value: 2, label: "2" },
-                { value: 3, label: "3" },
-                { value: 4, label: "4" },
-                { value: 5, label: "5" },
-              ]}
-              dataType="numberState"
-            />
-          )}
-        />
+        <Separator orientation="vertical" />
 
         {/* Check-In Date Picker */}
         <FormField
           control={form.control}
           name="arrival"
           render={({ field }) => (
-            <CusDatePicker
-              label="Check-In"
-              selectedDate={field.value}
-              onSelect={field.onChange}
-              hint="Select your check-in date."
-              showHint={showCheckInHint}
-              onFocus={() => setShowCheckInHint(true)}
-              onBlur={() => setShowCheckInHint(false)}
-            />
+            <div className="w-full">
+              <CusDatePicker
+                label="CheckIn"
+                selectedDate={field.value}
+                onSelect={field.onChange}
+                hint="Select your check-in date."
+              />
+            </div>
           )}
         />
+        <Separator orientation="vertical" color="#808080"  className="text-gray-700 border-black "/>
 
         {/* Check-Out Date Picker */}
         <FormField
           control={form.control}
           name="departure"
           render={({ field }) => (
-            <CusDatePicker
-              label="Check-Out"
-              selectedDate={field.value}
-              onSelect={field.onChange}
-              hint="Select your check-out date."
-              showHint={showCheckOutHint}
-              onFocus={() => setShowCheckOutHint(true)}
-              onBlur={() => setShowCheckOutHint(false)}
-              disabledDates={(date) => date <= form.getValues("arrival")}
-            />
+            <div className="w-full">
+              <CusDatePicker
+                label="Departure"
+                selectedDate={field.value}
+                onSelect={field.onChange}
+                hint="Select your check-out date."
+                disabledDates={(date) => {
+                  const minDepartureDate = addDays(form.getValues("arrival"), 2);
+                  return date < minDepartureDate;
+                }}
+              />
+            </div>
+          )}
+        />
+        <Separator orientation="vertical" />
+
+        {/* Adults Select */}
+        <FormField
+          control={form.control}
+          name="adults"
+          render={({ field }) => (
+            <div className="w-full">
+              <CusSelector
+                label="Adults"
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  setAdults(value); // Update the number of adults
+                }}
+                options={[
+                  { value: 1, label: "1" },
+                  { value: 2, label: "2" },
+                  { value: 3, label: "3" },
+                  { value: 4, label: "4" },
+                  { value: 5, label: "5" },
+                  { value: 6, label: "6" },
+                  { value: 7, label: "7" },
+                  { value: 8, label: "8" },
+                ]}
+                dataType="numberState"
+              />
+            </div>
+          )}
+        />
+        <Separator orientation="vertical" />
+
+        {/* Children Select */}
+        <FormField
+          control={form.control}
+          name="children"
+          render={({ field }) => (
+            <div className="w-full">
+              <CusSelector
+                label="Children"
+                value={field.value}
+                onChange={field.onChange}
+                options={getChildrenOptions(adults)} // Dynamically generate children options
+                dataType="numberState"
+              />
+            </div>
           )}
         />
 
-        <Button type="submit">Submit</Button>
+        <div className="w-full flex justify-center">
+          <Button type="submit" className="px-8 py-4 btn-primary">
+            Submit
+          </Button>
+        </div>
       </form>
     </Form>
+    </div>
+    
   );
 }
